@@ -419,13 +419,15 @@ class DPParser
                     case 'AS_GRIMTOOTH': 	$condval = Enum\Skill::AS_GRIMTOOTH; break;
                 }
             }
+			$stant = "A".$s['skillId'];
             $data[] = [
                 "MobID" => $mobid,
-                "Info" => $mobname."@SKILL_".$s['skillId'],
+                //"Info" => $mobname."@SKILL_".$s['skillId'],
+                "Info" => $mobname."@".Enum\Skill_Name::toSkill($stant),
                 "State" => $state,
                 "SkillID" => $s['skillId'],
-                "SkillLv" => $s['skillId'],
-                "Rate" => $s['chance'],
+                "SkillLv" => $s['level'],
+                "Rate" => $s['chance']*10,
                 "CastTime" => $s['casttime'],
                 "Delay" => $s['delay'],
                 "Cancelable" => $s['interruptable'],

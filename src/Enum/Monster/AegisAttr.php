@@ -24,6 +24,9 @@ class AegisAttr
         if ($attr&0x04) {
             $mode |= Mode::MD_IGNORERANGED;
         }
+		/*if ($attr&0x08) {
+            $mode |= Mode::MD_MVP;
+        }*/
         // 0x100000 (takes 1 damage from misc attacks)
         if ($attr&0x10) {
             $mode |= Mode::MD_IGNOREMISC;

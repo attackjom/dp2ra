@@ -32,7 +32,7 @@ class Monsters
             "ID", "Sprite_Name", "kROName", "iROName", "LV", "HP", "SP", "EXP", "JEXP", "Range1",
             "ATK1", "ATK2", "DEF", "MDEF", "STR", "AGI", "VIT", "INT", "DEX", "LUK", "Range2", "Range3",
             "Scale", "Race", "Element", "Mode", "Speed", "aDelay", "aMotion", "dMotion",
-            "MEXP", "MVP1id", "MVP1per", "MVP2id", "MVP2per", "MVP3id", "MVP3per",
+            "MEXP", "RES", "MRES", "MVP1id", "MVP1per", "MVP2id", "MVP2per", "MVP3id", "MVP3per",
             "Drop1id", "Drop1per", "Drop2id", "Drop2per", "Drop3id", "Drop3per", "Drop4id", "Drop4per",
             "Drop5id", "Drop5per", "Drop6id", "Drop6per", "Drop7id", "Drop7per", "Drop8id", "Drop8per",
             "Drop9id", "Drop9per",
@@ -56,8 +56,8 @@ class Monsters
         $this->entry['EXP'] = $stats["baseExperience"];
         $this->entry['JEXP'] = $stats["jobExperience"];
         $this->entry['Range1'] = $stats["attackRange"];
-        $this->entry['ATK1'] = isset($stats["attack"], $stats["attack"]["minimum"]) ? $stats["attack"]["minimum"] : null;
-        $this->entry['ATK2'] = isset($stats["attack"], $stats["attack"]["maximum"]) ? $stats["attack"]["maximum"] : null;
+        $this->entry['ATK1'] = $stats["atk1"];
+        $this->entry['ATK2'] = $stats["atk2"];
         $this->entry['DEF'] = $stats["defense"];
         $this->entry['MDEF'] = $stats["magicDefense"];
         $this->entry['STR'] = $stats["str"];
@@ -71,7 +71,7 @@ class Monsters
         $this->entry['Scale'] = $stats["scale"];
         $this->entry['Race'] = $stats["race"];
         $this->entry['Element'] = $stats["element"];
-        $this->entry['Mode'] = DPParser::monsterMode($stats["class"], $stats["ai"], $stats["attr"]);
+        $this->entry['Mode'] = DPParser::monsterMode($stats["ai"], $stats["class"], $stats["attr"]);
         if ($stats["mvp"]) {
             $this->entry['Mode'] |= Enum\Monster\Mode::MD_MVP;
         }
@@ -80,20 +80,33 @@ class Monsters
         $this->entry['aDelay'] = (int)$stats["rechargeTime"];
         $this->entry['aMotion'] = (int)$stats["attackSpeed"];
         $this->entry['dMotion'] = (int)$stats["attackedSpeed"];
-
         $this->entry['MEXP']  = (int)($stats["mvp"] ? $stats["baseExperience"]/2 : 0);
+		$this->entry['RES'] = 0;
+		$this->entry['MRES'] = 0;
         $i = 1;
+		for ($i; $i<=3; $i++) {
+			$this->entry['MVP'.(int)($i).'id'] = 0;
+			$this->entry['MVP'.(int)($i).'per'] = 0;
+		}
+		$i = 1;
         foreach($this->current_data["mvpdrops"] as &$item) {
             $this->entry['MVP'.$i.'id'] = $item["itemId"];
             $this->entry['MVP'.$i.'per'] = $item["chance"];
             ++$i;
         }
         $i = 1;
+		for ($i; $i<=9; $i++) {
+			$this->entry['Drop'.(int)($i).'id'] = 0;
+			$this->entry['Drop'.(int)($i).'per'] = 0;
+		}
+		$i = 1;
         foreach($this->current_data["drops"] as &$item) {
             $itemId = (int)$item["itemId"];
-            if ($itemId > 4000 && $itemId < 4700) {
+			if ($item["serverTypeName"] == "RE:Start") {
+			}
+            else if (($itemId > 4000 && $itemId < 4700) || ($itemId > 27011 && $itemId < 27389) || ($itemId > 31005 && $itemId < 31027) || ($itemId > 300000 && $itemId < 30194)) {
                 $this->entry['DropCardid'] = $itemId;
-                $this->entry['DropCardid']= $item["chance"];
+                $this->entry['DropCardper']= $item["chance"];
             }
             else {
                 if ($itemId == 512 && !$item["chance"]) {
@@ -101,11 +114,11 @@ class Monsters
                     $chance = null;
                 }
                 else {
-                    $chance = ($item["chance"] == 0 ? 1 : 0);
+                    $chance = ($item["chance"] == 0 ? 1 : $item["chance"]);
+					$this->entry['Drop'.(int)($i).'id'] = $itemId;
+					$this->entry['Drop'.(int)($i).'per'] = $chance;
+					++$i;
                 }
-                $this->entry['Drop'.$i.'id'] = $itemId;
-                $this->entry['Drop'.$i.'per'] = $chance;
-                ++$i;
             }
         }
 
@@ -123,10 +136,12 @@ class Monsters
 
         if ($write_output) {
             fputs($this->out_mobdb_fp, implode(",", array_values($this->entry))."\r\n");
-            fputs($this->out_skill_fp, "".$this->current_id.",".$trade_flag."\t// ".$this->current_data["name"]."\r\n");
-            fputs($this->out_skill_fp, "".$this->current_id.",".$trade_flag."\t// ".$this->current_data["name"]."\r\n");
+            //fputs($this->out_skill_fp, "".$this->current_id.",".$trade_flag."\t// ".$this->current_data["name"]."\r\n");
+            //fputs($this->out_skill_fp, "".$this->current_id.",".$trade_flag."\t// ".$this->current_data["name"]."\r\n");
+            //foreach ($skills as &$skill)
+                //fputs($this->out_skill_fp, Monsters::printSpawn($skill)."\r\n");
             foreach ($skills as &$skill)
-                fputs($this->out_skill_fp, Monsters::printSpawn($skill)."\r\n");
+                fputs($this->out_skill_fp, implode(",", array_values($skill))."\r\n");
             foreach ($spawn as &$s)
                 fputs($this->out_spawn_fp, implode(",", array_values($s))."\r\n");
         } else {
@@ -201,11 +216,11 @@ class Monsters
 
         $this->num_done = 0;
         ksort($this->monsters_raw);
-        foreach ($this->monsters_raw as $id => $data) {
-            $this->current_id = $id;
-            $this->current_data = $data;
+        //foreach ($this->monsters_raw as $id => $data) {
+            $this->current_id = $this->monsters_raw["id"];
+            $this->current_data = $this->monsters_raw;
             $this->parseItem($write_output);
-        }
+       // }
     }
 
     public function writeParsed()

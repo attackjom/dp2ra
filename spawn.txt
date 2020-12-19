@@ -1,0 +1,1 @@
+lhz_dun_n,0,0,0,0,boss_monster,V_EREMES,3208,20,5000,0
